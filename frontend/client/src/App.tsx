@@ -1,8 +1,11 @@
-import { useState } from "react";
-import { Bell, ChevronDown, Command, FileText, LayoutDashboard, Network, Settings2, ShieldCheck, Sparkles, UploadCloud } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Bell, Bot, ChevronDown, Command, FileText, LayoutDashboard, Network, Settings2, ShieldCheck, Sparkles, UploadCloud } from "lucide-react";
+import AIAnalyzer from "./pages/AIAnalyzer";
+import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import ClauseIntelligence from "./pages/ClauseIntelligence";
 import ClauseGraph from "./pages/ClauseGraph";
+import Landing from "./pages/Landing";
 import Reminders from "./pages/Reminders";
 import Settings from "./pages/Settings";
 
@@ -13,22 +16,59 @@ const navItems = [
 ];
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [activeNav, setActiveNav] = useState(() => {
     const path = window.location.pathname;
     if (path === "/clause-intelligence") return "Clause intelligence";
     if (path === "/clause-graph") return "Clause graph";
     if (path === "/reminders") return "Reminders";
     if (path === "/settings") return "Settings";
+    if (path === "/ai-analyzer") return "AI Analyzer";
     return "Overview";
   });
   const [showUpload, setShowUpload] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const navigate = (label: string) => {
-    setActiveNav(label);
-    window.history.replaceState({}, "", label === "Overview" ? "/" : `/${label.toLowerCase().replaceAll(" ", "-")}`);
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleFile = (file?: File) => {
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      setSelectedFile(null);
+      setUploadMessage("That file is larger than the 25 MB limit.");
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadMessage("Ready for analysis when the document service is connected.");
   };
 
-  const page = activeNav === "Clause intelligence" ? <ClauseIntelligence />
+  const closeUpload = () => {
+    setShowUpload(false);
+    setSelectedFile(null);
+    setUploadMessage("");
+  };
+
+  const navigate = (label: string) => {
+    const nextPath = label === "Overview" ? "/workspace" : `/${label.toLowerCase().replaceAll(" ", "-")}`;
+    setActiveNav(label);
+    setCurrentPath(nextPath);
+    window.history.pushState({}, "", nextPath);
+  };
+
+  if (currentPath === "/") return <Landing />;
+  if (currentPath === "/login") return <Auth mode="login" />;
+  if (currentPath === "/register") return <Auth mode="register" />;
+
+  const page = activeNav === "AI Analyzer" ? <AIAnalyzer />
+    : activeNav === "Clause intelligence" ? <ClauseIntelligence />
     : activeNav === "Clause graph" ? <ClauseGraph />
     : activeNav === "Reminders" ? <Reminders />
     : activeNav === "Settings" ? <Settings />
@@ -68,6 +108,11 @@ export default function App() {
             </button>
           ))}
           <span className="nav-section-label nav-section-spaced">Tools</span>
+          <button className={`nav-item ${activeNav === "AI Analyzer" ? "active" : ""}`} onClick={() => navigate("AI Analyzer")}>
+            <Bot size={16} strokeWidth={1.9} />
+            <span>AI Analyzer</span>
+            <span className="nav-shortcut">⌘ A</span>
+          </button>
           <button className="nav-item" onClick={() => setShowUpload(true)}>
             <UploadCloud size={16} strokeWidth={1.9} />
             <span>Analyze a document</span>
@@ -113,18 +158,35 @@ export default function App() {
       </main>
 
       {showUpload && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="upload-title" onClick={() => setShowUpload(false)}>
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="upload-title" onClick={closeUpload}>
           <div className="upload-modal" onClick={(event) => event.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowUpload(false)} aria-label="Close">×</button>
+            <button className="modal-close" onClick={closeUpload} aria-label="Close">×</button>
             <div className="modal-eyebrow"><Sparkles size={14} /> New analysis</div>
             <h2 id="upload-title">Bring a contract into focus.</h2>
             <p>Drop a PDF, DOCX, or image here. Your document stays in memory and is automatically purged after the session.</p>
-            <div className="dropzone" onClick={() => window.alert("File picker will connect to /api/documents/analyze.")}>
+            <input
+              ref={fileInputRef}
+              className="file-input"
+              type="file"
+              accept=".pdf,.docx,image/png,image/jpeg"
+              onChange={(event) => handleFile(event.target.files?.[0])}
+            />
+            <button
+              className="dropzone"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                handleFile(event.dataTransfer.files[0]);
+              }}
+            >
               <UploadCloud size={28} />
-              <strong>Drop your document here</strong>
-              <span>PDF, DOCX, PNG or JPG · max 25 MB</span>
-            </div>
-            <div className="modal-footer"><span><ShieldCheck size={14} /> No persistent file storage</span><button className="secondary-button" onClick={() => setShowUpload(false)}>Cancel</button></div>
+              <strong>{selectedFile ? selectedFile.name : "Drop your document here"}</strong>
+              <span>{selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB · selected` : "PDF, DOCX, PNG or JPG · max 25 MB"}</span>
+            </button>
+            {uploadMessage && <p className="upload-message" role="status">{uploadMessage}</p>}
+            <div className="modal-footer"><span><ShieldCheck size={14} /> No persistent file storage</span><button className="secondary-button" onClick={closeUpload}>Cancel</button></div>
           </div>
         </div>
       )}
