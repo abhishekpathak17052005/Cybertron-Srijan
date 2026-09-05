@@ -6,21 +6,42 @@ import { Input } from "@/components/ui/input";
 
 type AuthMode = "login" | "register";
 
-type AuthProps = { mode: AuthMode };
+type AuthProps = {
+  mode: AuthMode;
+  onNavigate?: (path: string) => void;
+  onLogin?: (user: { name: string; email: string }) => void;
+};
 
 function goTo(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-export default function Auth({ mode }: AuthProps) {
+export default function Auth({ mode, onNavigate, onLogin }: AuthProps) {
   const isLogin = mode === "login";
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const handleNavigate = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+      return;
+    }
+    goTo(path);
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitted(true);
+
+    const displayName = "User";
+    const email = "user@example.com";
+    const userProfile = { name: displayName, email };
+    if (onLogin) {
+      onLogin(userProfile);
+      return;
+    }
+    handleNavigate("/workspace");
   };
 
   return (
@@ -28,11 +49,11 @@ export default function Auth({ mode }: AuthProps) {
       <div className="auth-atmosphere auth-atmosphere-one" />
       <div className="auth-atmosphere auth-atmosphere-two" />
       <nav className="auth-nav">
-        <button className="public-brand" onClick={() => goTo("/")}>
+        <button className="public-brand" onClick={() => handleNavigate("/")}>
           <span className="public-brand-mark"><ShieldCheck size={17} /></span>
           <span><strong>LegalLens</strong><small>Contract intelligence</small></span>
         </button>
-        <button className="auth-back" onClick={() => goTo("/")}><ArrowLeft size={14} /> Back to home</button>
+        <button className="auth-back" onClick={() => handleNavigate("/")}><ArrowLeft size={14} /> Back to home</button>
       </nav>
 
       <section className="auth-layout">
@@ -61,7 +82,7 @@ export default function Auth({ mode }: AuthProps) {
             </form>
             <div className="auth-divider"><span>or continue with</span></div>
             <Button variant="outline" className="auth-provider" onClick={() => setSubmitted(true)}><span className="provider-mark">G</span> Continue with Google</Button>
-            <p className="auth-switch">{isLogin ? "New to LegalLens?" : "Already have an account?"} <button onClick={() => goTo(isLogin ? "/register" : "/login")}>{isLogin ? "Create an account" : "Sign in"}</button></p>
+            <p className="auth-switch">{isLogin ? "New to LegalLens?" : "Already have an account?"} <button onClick={() => handleNavigate(isLogin ? "/register" : "/login")}>{isLogin ? "Create an account" : "Sign in"}</button></p>
             <p className="auth-legal">By continuing, you agree to the LegalLens terms and privacy promise.</p>
           </CardContent>
         </Card>

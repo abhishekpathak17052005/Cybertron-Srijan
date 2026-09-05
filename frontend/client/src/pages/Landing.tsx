@@ -1,6 +1,10 @@
 import { ArrowRight, Check, FileSearch, GitBranch, LockKeyhole, ShieldCheck, Sparkles, TimerReset, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+type LandingProps = {
+  onNavigate?: (path: string) => void;
+};
+
 function goTo(path: string) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
@@ -8,7 +12,15 @@ function goTo(path: string) {
 
 const proofPoints = ["Clause-level citations", "Risk mapped in minutes", "Session-scoped by default"];
 
-export default function Landing() {
+export default function Landing({ onNavigate }: LandingProps) {
+  const handleNavigate = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+      return;
+    }
+    goTo(path);
+  };
+
   return (
     <main className="public-shell">
       <nav className="public-nav" aria-label="Public navigation">
@@ -19,8 +31,8 @@ export default function Landing() {
         <div className="public-nav-links">
           <a href="#how-it-works">How it works</a>
           <a href="#privacy">Privacy</a>
-          <button className="public-login-link" onClick={() => goTo("/login")}>Sign in</button>
-          <Button className="public-nav-cta" onClick={() => goTo("/register")}>Start free <ArrowRight size={15} /></Button>
+          <button className="public-login-link" onClick={() => handleNavigate("/login")}>Sign in</button>
+          <Button className="public-nav-cta" onClick={() => handleNavigate("/register")}>Start free <ArrowRight size={15} /></Button>
         </div>
       </nav>
 
@@ -30,7 +42,7 @@ export default function Landing() {
           <h1>Read the fine print like it was written <em>for you.</em></h1>
           <p>LegalLens turns overwhelming agreements into clear risks, connected obligations, and the next decision you need to make.</p>
           <div className="landing-actions">
-            <Button className="landing-primary" onClick={() => goTo("/register")}>Analyze your first contract <ArrowRight size={17} /></Button>
+            <Button className="landing-primary" onClick={() => handleNavigate("/register")}>Analyze your first contract <ArrowRight size={17} /></Button>
             <button className="landing-secondary" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>See how it works <span>↓</span></button>
           </div>
           <div className="proof-row">{proofPoints.map((point) => <span key={point}><Check size={13} /> {point}</span>)}</div>
@@ -59,7 +71,7 @@ export default function Landing() {
 
       <section className="privacy-band" id="privacy"><div className="privacy-band-icon"><ShieldCheck size={22} /></div><div><span className="public-eyebrow"><span /> BUILT FOR SENSITIVE DOCUMENTS</span><h2>Your contract stays yours.</h2><p>LegalLens is designed around a simple promise: understand the document without turning it into a permanent data trail.</p></div><div className="privacy-points"><span><LockKeyhole size={14} /> No source file storage</span><span><UploadCloud size={14} /> Session-scoped analysis</span></div></section>
 
-      <section className="landing-final"><div><span className="public-eyebrow"><span /> START WITH CLARITY</span><h2>The next decision is already in the document.</h2></div><Button className="landing-primary" onClick={() => goTo("/register")}>Create your workspace <ArrowRight size={17} /></Button></section>
+      <section className="landing-final"><div><span className="public-eyebrow"><span /> START WITH CLARITY</span><h2>The next decision is already in the document.</h2></div><Button className="landing-primary" onClick={() => handleNavigate("/register")}>Create your workspace <ArrowRight size={17} /></Button></section>
       <footer className="public-footer"><span>LegalLens / Private intelligence layer</span><span>Made for clearer decisions, one clause at a time.</span></footer>
     </main>
   );
