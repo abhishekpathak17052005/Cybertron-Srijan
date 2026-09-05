@@ -1,0 +1,37 @@
+{
+  "name": "legallens-backend",
+  "version": "1.0.0",
+  "description": "LegalLens Backend - Decision-Ready Document Intelligence Platform",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test-api.js"
+  },
+  "keywords": [
+    "legallens",
+    "legaltech",
+    "gemini",
+    "rag",
+    "vector-search",
+    "agenda"
+  ],
+  "author": "Om Kshirsagar",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "@zxing/library": "^0.23.0",
+    "agenda": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mammoth": "^1.9.0",
+    "mongoose": "^8.9.5",
+    "multer": "^1.4.5-lts.1",
+    "nanoid": "^5.1.5",
+    "nodemailer": "^6.10.0",
+    "pdf-parse": "^1.1.1",
+    "sharp": "^0.35.4"
+  }
+}
