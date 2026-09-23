@@ -259,12 +259,42 @@ h2 { color: #e6e9dd; font: 500 17px/1.15 "Space Grotesk", sans-serif; letter-spa
 .copilot-orb { width: 39px; height: 39px; display: grid; place-items: center; flex-shrink: 0; color: var(--lime); border: 1px solid rgba(229,138,43,.3); border-radius: 11px; background: rgba(229,138,43,.12); box-shadow: 0 0 20px rgba(229,138,43,.1); }
 .copilot-intro h2 { font-size: 21px; }
 .copilot-intro p { max-width: 530px; margin-top: 6px; color: #8c9685; font-size: 11px; line-height: 1.45; }
-.copilot-answer { position: relative; z-index: 1; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 300ms var(--ease-out), opacity 240ms var(--ease-out), margin 300ms var(--ease-out); }
-.copilot-answer.answer-visible { max-height: 150px; margin: 17px 0 0 52px; opacity: 1; }
+.copilot-answer { position: relative; z-index: 1; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 360ms var(--ease-out), opacity 240ms var(--ease-out), margin 300ms var(--ease-out); }
+.copilot-answer.answer-visible { max-height: 520px; overflow-y: auto; margin: 17px 0 0 52px; padding-right: 8px; opacity: 1; }
+.copilot-answer.answer-visible::-webkit-scrollbar { width: 4px; }
+.copilot-answer.answer-visible::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+.copilot-answer.answer-visible::-webkit-scrollbar-thumb { background: rgba(229,138,43,0.3); border-radius: 4px; }
+
+.copilot-formatted-container { max-width: 760px; margin: 12px 0 16px; display: flex; flex-direction: column; gap: 12px; }
+.copilot-lead-answer { font-size: 13.5px; line-height: 1.6; color: #f0f4ea; font-weight: 500; padding: 10px 14px; border-left: 3px solid var(--lime); background: rgba(229,138,43,0.06); border-radius: 0 6px 6px 0; }
+.copilot-paragraph { font-size: 12.5px; line-height: 1.6; color: #ccd3c4; margin: 2px 0; }
+.copilot-section-heading { font-size: 13px; font-weight: 600; color: #eef3e5; margin: 10px 0 4px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 6px; }
+.copilot-strong-text { color: #f5f8f0; font-weight: 600; }
+
+.copilot-bullet-list { list-style: none; padding: 0; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 7px; }
+.copilot-bullet-item { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.55; color: #c4cdc0; }
+.copilot-bullet-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); margin-top: 7px; flex-shrink: 0; box-shadow: 0 0 6px rgba(229,138,43,0.4); }
+.copilot-bullet-content { flex: 1; min-width: 0; }
+
+.copilot-inline-pill { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; margin: 0 3px; font: 10px "DM Mono", monospace; color: var(--lime); background: rgba(229,138,43,0.12); border: 1px solid rgba(229,138,43,0.28); border-radius: 4px; vertical-align: baseline; cursor: pointer; transition: all 140ms ease; }
+.copilot-inline-pill:hover { background: rgba(229,138,43,0.22); border-color: rgba(229,138,43,0.5); transform: translateY(-0.5px); }
+.copilot-inline-pill .pill-icon { color: var(--lime); opacity: 0.8; }
+
+.copilot-currency-badge { display: inline-block; padding: 0 4px; font-weight: 600; color: #ffd166; background: rgba(255,209,102,0.1); border-radius: 3px; }
+
+.copilot-recommendation-card { margin-top: 10px; padding: 14px 16px; border: 1px solid rgba(229,138,43,0.3); border-radius: 8px; background: linear-gradient(135deg, rgba(229,138,43,0.08), rgba(20,25,18,0.7)); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+.rec-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rec-icon-box { width: 30px; height: 30px; border-radius: 8px; background: rgba(229,138,43,0.18); border: 1px solid rgba(229,138,43,0.35); color: var(--lime); display: grid; place-items: center; flex-shrink: 0; }
+.rec-kicker { font: 9px "DM Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--lime); display: block; }
+.rec-card-header h4 { font-size: 13px; font-weight: 600; color: #ffffff; margin: 1px 0 0; }
+.rec-card-body { display: flex; flex-direction: column; gap: 8px; }
+.rec-step-item { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; line-height: 1.5; color: #d6ded0; }
+.rec-step-num { width: 18px; height: 18px; border-radius: 50%; background: rgba(229,138,43,0.2); border: 1px solid rgba(229,138,43,0.4); color: var(--lime); font: 10px "DM Mono", monospace; font-weight: 700; display: grid; place-items: center; flex-shrink: 0; margin-top: 1px; }
+.rec-step-text { flex: 1; }
+
 .answer-meta { display: flex; align-items: center; gap: 10px; color: #788271; font: 9px "DM Mono", monospace; }
 .answer-badge { padding: 4px 6px; color: var(--lime); border-radius: 3px; background: var(--lime-soft); }
-.copilot-answer p { max-width: 730px; margin: 10px 0; color: #ccd3c4; font-size: 12px; line-height: 1.55; }
-.citation-row { display: flex; align-items: center; gap: 8px; color: #8f9b86; font: 9px "DM Mono", monospace; }
+.citation-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #8f9b86; font: 9px "DM Mono", monospace; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
 .citation-row button { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 5px 8px; color: var(--lime); border: 1px solid rgba(229,138,43,.23); border-radius: 4px; background: rgba(229,138,43,.07); font: 9px "DM Mono", monospace; }
 .copilot-input { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; max-width: 780px; margin: 20px 0 0 52px; padding: 6px 6px 6px 13px; border: 1px solid rgba(229,138,43,.25); border-radius: 7px; background: rgba(12,14,11,.32); box-shadow: 0 0 0 3px rgba(229,138,43,.03); }
 .copilot-input:focus-within { border-color: rgba(229,138,43,.55); box-shadow: 0 0 0 3px rgba(229,138,43,.08); }

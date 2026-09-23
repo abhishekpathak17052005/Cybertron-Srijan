@@ -33,3 +33,6 @@ Thumbs.db
 # Webdev / runtime artifacts
 .webdev/
 .manus-logs/
+
+# PPTs
+ppt.md

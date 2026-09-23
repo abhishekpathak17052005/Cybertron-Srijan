@@ -1,6 +1,7 @@
 import geminiService from "../services/geminiService.js";
 import vectorService from "../services/vectorService.js";
 import graphService from "../services/graphService.js";
+import documentSessionService from "../services/documentSessionService.js";
 
 /**
  * POST /api/chat/query
@@ -17,63 +18,54 @@ export async function queryChat(req, res, next) {
       });
     }
 
-    console.log(`💬 [Chat] Query for session ${sessionId || "demo"}: "${question}"`);
+    // Resolve active session ID (auto-routes to recently uploaded document if present)
+    const effectiveSessionId = documentSessionService.getActiveSessionId(sessionId);
+    const documentContext = documentSessionService.getDocumentContext(effectiveSessionId);
+
+    console.log(`💬 [Chat] Query for document "${documentContext.documentName}" (${effectiveSessionId}): "${question}"`);
 
     // 1. Generate query embedding (768 dims)
     const queryEmbedding = await geminiService.generateEmbedding(question);
 
-    // 2. Vector search (Top-K = 4)
-    let retrieved = [];
-    if (sessionId) {
-      retrieved = await vectorService.searchSimilarClauses(sessionId, queryEmbedding, 4);
+    // 2. Hybrid Search on the target document
+    let retrieved = await vectorService.searchSimilarClauses(
+      effectiveSessionId,
+      question,
+      queryEmbedding,
+      4
+    );
+
+    // If active session vector search returned nothing, check documentContext clauses
+    if ((!retrieved || retrieved.length === 0) && documentContext.clauses && documentContext.clauses.length > 0) {
+      retrieved = documentContext.clauses.slice(0, 4);
+    }
+
+    // Fallback to demo clauses ONLY if no uploaded document is present in the system
+    if ((!retrieved || retrieved.length === 0) && !documentContext.hasUploadedDoc) {
+      retrieved = await vectorService.searchSimilarClauses(
+        "sess_demo_default",
+        question,
+        queryEmbedding,
+        4
+      );
     }
 
     // 3. Graph Traversal: 1-hop adjacency expansion over connectedClauses
-    let expandedClauses = retrieved;
+    let expandedClauses = retrieved || [];
     let graphPath = [];
 
-    if (sessionId && retrieved.length > 0) {
-      const graphResult = await graphService.traverseAdjacency(sessionId, retrieved, 1);
-      expandedClauses = graphResult.expandedClauses;
-      graphPath = graphResult.graphPath;
+    if (expandedClauses.length > 0) {
+      const graphResult = await graphService.traverseAdjacency(effectiveSessionId, expandedClauses, 1);
+      expandedClauses = graphResult.expandedClauses || expandedClauses;
+      graphPath = graphResult.graphPath || [];
     }
 
-    // If no specific session clauses found (e.g. initial demo state), provide smart defaults
-    if (expandedClauses.length === 0) {
-      expandedClauses = [
-        {
-          clauseId: "CLAUSE_12",
-          title: "Termination and notice period",
-          pageNumber: 5,
-          clauseText: "Either party may terminate this agreement by providing a 60-day written notice to the other party.",
-          metadata: {
-            category: "Termination",
-            riskLevel: "HIGH",
-            financials: { contingentPenalty: "₹20,000" },
-            connectedClauses: ["CLAUSE_07", "CLAUSE_21"],
-          },
-        },
-        {
-          clauseId: "CLAUSE_21",
-          title: "Early exit penalty",
-          pageNumber: 8,
-          clauseText: "Early termination without the required 60-day written notice shall incur a penalty equivalent to ₹20,000.",
-          metadata: {
-            category: "Financial",
-            riskLevel: "HIGH",
-            financials: { contingentPenalty: "₹20,000" },
-            connectedClauses: ["CLAUSE_12"],
-          },
-        },
-      ];
-      graphPath = ["CLAUSE_12", "CLAUSE_21"];
-    }
-
-    // 4. Grounded inference via Gemini 3.5/2.5 Flash
+    // 4. Grounded inference strictly scoped to the active document
     const chatResult = await geminiService.generateChatAnswer({
       question,
       retrievedClauses: expandedClauses,
       graphPath,
+      documentContext,
     });
 
     // Check if client requested SSE stream
@@ -83,7 +75,7 @@ export async function queryChat(req, res, next) {
       res.setHeader("Connection", "keep-alive");
 
       // Send answer text in chunks
-      const words = chatResult.answer.split(" ");
+      const words = (chatResult.answer || "").split(" ");
       for (let i = 0; i < words.length; i += 3) {
         const chunk = words.slice(i, i + 3).join(" ") + " ";
         res.write(`event: chunk\ndata: ${JSON.stringify({ text: chunk })}\n\n`);

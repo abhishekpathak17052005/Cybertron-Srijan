@@ -60,9 +60,9 @@ export function sanitizeSpeechText(text: string): string {
   let cleaned = text;
 
   // 1. Citation Phonetics
-  // [Clause 12 (Page 5)] or [Cl. 12 (p. 5)]
+  // [Clause 12 (Page 5)] or [Cl. 12 (p. 5)] or [CLAUSE_12 (Page 5)]
   cleaned = cleaned.replace(
-    /\[(?:Cl\.|Clause)\s*(\d+)\s*(?:\((?:p\.|page)\s*(\d+)\))?\]/gi,
+    /\[(?:Cl\.|Clause|CLAUSE)[_\s]*(\d+)\s*(?:\((?:p\.|page)\s*(\d+)\))?[^\]]*\]/gi,
     (_match, clause, page) => {
       if (page) return `according to Clause ${clause} on page ${page}`;
       return `according to Clause ${clause}`;

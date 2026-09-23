@@ -7,6 +7,7 @@ import TaskReminder from "../models/TaskReminder.js";
 import { scheduleTaskReminders } from "../config/agenda.js";
 import { isConnected } from "../config/db.js";
 import { runFullAuthenticityAudit } from "./authenticityController.js";
+import documentSessionService from "../services/documentSessionService.js";
 
 // Session cache to support fast tab switching and session sharing
 const sessionCache = new Map();
@@ -190,6 +191,19 @@ export async function analyzeDocument(req, res, next) {
     // Cache session response
     sessionCache.set(sessionId, responsePayload);
 
+    // Register active document session for Grounded RAG Copilot
+    documentSessionService.registerSession(sessionId, {
+      documentName: originalname,
+      documentType: report.documentType,
+      rawText: extraction.text,
+      summary: responsePayload.summary,
+      financialLedger: report.financialLedger,
+      obligations: report.obligations,
+      clauses: clausesWithEmbeddings,
+      dag: report.dag,
+      tasks: savedTasks,
+    });
+
     console.log(`✅ [Analyze] Completed analysis for session: ${sessionId} (Zero-disk wiped)`);
     return res.status(200).json(responsePayload);
   } catch (error) {
@@ -209,6 +223,11 @@ export async function getDocumentSession(req, res) {
 
   if (cached) {
     return res.json({ success: true, ...cached });
+  }
+
+  const doc = documentSessionService.getSession(sessionId);
+  if (doc) {
+    return res.json({ success: true, ...doc });
   }
 
   return res.status(404).json({

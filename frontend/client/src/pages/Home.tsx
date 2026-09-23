@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useDocument } from "../contexts/DocumentContext";
 import { speakSanitizedText, stopSpeaking } from "../utils/speechSanitizer";
+import FormattedCopilotAnswer from "../components/FormattedCopilotAnswer";
 
 type HomeProps = { onUpload: () => void };
 
@@ -731,7 +732,20 @@ export default function Home({ onUpload }: HomeProps) {
                     {copilotResponse.citations?.length || 0} citations · {copilotResponse.connectedClauses?.length || 0} graph hops
                   </span>
                 </div>
-                <p style={{ lineHeight: 1.6, margin: "10px 0" }}>{copilotResponse.answer}</p>
+                <FormattedCopilotAnswer
+                  answer={copilotResponse.answer}
+                  citations={copilotResponse.citations}
+                  onSelectClause={(clauseId) => {
+                    const matching = (documentData.clauses || []).find(
+                      (c) => c.clauseId === clauseId || c.id === clauseId || c.id === clauseId.replace("_", " ")
+                    );
+                    if (matching) {
+                      setActiveClause(matching.id);
+                      const elem = document.querySelector(".clause-panel");
+                      if (elem) elem.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                />
                 <div className="citation-row">
                   {copilotResponse.citations?.map((c: any, i: number) => (
                     <span key={i}>

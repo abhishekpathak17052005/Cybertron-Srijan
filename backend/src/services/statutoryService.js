@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { extractCertificateNumberFromText } from "./qrScannerService.js";
 
 let genAI = null;
 
@@ -12,7 +13,7 @@ function getGenAI() {
 }
 
 function getModelName() {
-  return process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  return process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 }
 
 /**
@@ -21,6 +22,7 @@ function getModelName() {
  * @param {string} extractedDocumentText - Clean extracted contract text
  * @param {object} qrMetadata - Metadata extracted from Layer 2 (QR / statutory certificate)
  * @returns {Promise<{
+ *   extractedCertificateNumber: string | null,
  *   chronologyCheck: {
  *     stampPurchaseDate: string | null,
  *     executionDate: string | null,
@@ -65,14 +67,16 @@ ${JSON.stringify(qrMetadata, null, 2)}
 DOCUMENT TEXT (Preamble, Clauses, and Execution Footer):
 ${extractedDocumentText.slice(0, 12000)}
 
-ENFORCE THESE 3 MANDATORY INTEGRITY RULES:
+ENFORCE THESE 4 MANDATORY INTEGRITY RULES:
 1. THE CHRONOLOGY TEST: Stamp Purchase Date <= Execution Date <= Commencement Date.
    If the Stamp Purchase Date is AFTER the Agreement Execution Date, flag a CRITICAL_CHRONOLOGY_ANOMALY!
 2. PARTY RECONCILIATION: Check if the e-Stamp certificate purchaser matches Party 1 (Lessor/Landlord) or Party 2 (Lessee/Tenant) in the preamble.
 3. WITNESS & EXECUTION COMPLETENESS: Confirm execution recitals ("IN WITNESS WHEREOF..."), signatures of primary parties, and at least 2 witness signatures.
+4. CERTIFICATE / STAMP IDENTIFIER: Find and extract the exact certificate number, e-Stamp ID, GRN, registration reference, or challan number present in the document.
 
 Return a STRICT, VALID JSON object with this EXACT structure:
 {
+  "extractedCertificateNumber": "string certificate number found in document text, or null if completely absent",
   "chronologyCheck": {
     "stampPurchaseDate": "YYYY-MM-DD or null",
     "executionDate": "YYYY-MM-DD or null",
@@ -99,7 +103,12 @@ Return a STRICT, VALID JSON object with this EXACT structure:
       const text = response.response.text();
       const parsed = JSON.parse(text);
 
+      const certFound =
+        parsed.extractedCertificateNumber ||
+        extractCertificateNumberFromText(extractedDocumentText);
+
       return {
+        extractedCertificateNumber: certFound || null,
         chronologyCheck: parsed.chronologyCheck || {
           stampPurchaseDate: null,
           executionDate: null,
@@ -137,10 +146,12 @@ Return a STRICT, VALID JSON object with this EXACT structure:
 
 /**
  * Safely parse Indian and international date formats:
- * e.g. "28/02/2026", "15-Feb-2026", "15th day of February 2026", "2026-02-15"
+ * e.g. "28/02/2026", "15-Feb-2026", "05th day of February 2026", "2026-02-15"
  */
 function parseIndianDate(dateStr) {
   if (!dateStr) return null;
+
+  // DD/MM/YYYY or DD-MM-YYYY
   const parts = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
   if (parts) {
     const day = parseInt(parts[1], 10);
@@ -149,7 +160,23 @@ function parseIndianDate(dateStr) {
     if (year < 100) year += 2000;
     return new Date(year, month, day);
   }
-  const clean = dateStr.replace(/(?:st|nd|rd|th|\bday of\b)/gi, "").trim();
+
+  // Word dates like "05th day of February 2026" or "15-Feb-2026"
+  const wordParts = dateStr.match(/(\d{1,2})(?:st|nd|rd|th)?(?:\s+(?:day\s+of\s+)?|\s*[-/]\s*)([A-Za-z]+)(?:,?\s+|\s*[-/]\s*)(\d{2,4})/i);
+  if (wordParts) {
+    const day = parseInt(wordParts[1], 10);
+    const monthStr = wordParts[2].slice(0, 3).toLowerCase();
+    const months = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    const month = months[monthStr] !== undefined ? months[monthStr] : 0;
+    let year = parseInt(wordParts[3], 10);
+    if (year < 100) year += 2000;
+    return new Date(year, month, day);
+  }
+
+  const clean = dateStr.replace(/(?:st|nd|rd|th|\bday\s+of\b)/gi, " ").replace(/\s+/g, " ").trim();
   const d = new Date(clean);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -163,7 +190,7 @@ function runRuleBasedSemanticAudit(text = "", qrMetadata = {}) {
 
   // 1. Extract execution date
   const execMatch = text.match(
-    /(?:executed|made|entered\s*into)\s*(?:on|this)?\s*([0-9]{1,2}(?:st|nd|rd|th)?\s+(?:day\s+of\s+)?[A-Za-z]+,?\s+[0-9]{4}|[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i
+    /(?:executed|made|entered\s*into|dated|date\s*of\s*execution)(?:[\s\w,]*?)\b([0-9]{1,2}(?:st|nd|rd|th)?\s+(?:day\s+of\s+)?[A-Za-z]+,?\s+[0-9]{4}|[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i
   );
   const executionDateStr = execMatch ? execMatch[1] : null;
 
@@ -214,9 +241,10 @@ function runRuleBasedSemanticAudit(text = "", qrMetadata = {}) {
   // 5. Party names
   const parties = [];
   const p1Match = text.match(/(?:Mr\.|Mrs\.|Ms\.|Shri|Smt\.)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
-  if (p1Match) parties.push(p1Match[0]);
+  const extractedCert = extractCertificateNumberFromText(text);
 
   return {
+    extractedCertificateNumber: extractedCert || qrMetadata.certificateNumber || null,
     chronologyCheck: {
       stampPurchaseDate: stampDateStr || "2026-02-12",
       executionDate: executionDateStr || "2026-02-15",

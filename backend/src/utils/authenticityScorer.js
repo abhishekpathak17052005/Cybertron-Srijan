@@ -56,9 +56,11 @@ export function calculateAuthenticityScore(forensicResult, statutoryResult, sema
     });
   } else if (statutoryResult.verified) {
     badges.push({
-      label: "e-Stamp Certificate Detected",
+      label: statutoryResult.certificateNumber ? "e-Stamp Certificate Detected" : "Statutory Registry Reference",
       status: "PASS",
-      details: `OCR confirmed Cert #${statutoryResult.certificateNumber || "IN-MH"} (${statutoryResult.stampAmountPaid || "Duty Paid"})`,
+      details: statutoryResult.certificateNumber
+        ? `Cert #${statutoryResult.certificateNumber} (${statutoryResult.stampAmountPaid || "Duty Paid"})`
+        : `${statutoryResult.registryDomain || "Registry Record"} (${statutoryResult.stampAmountPaid || "Duty Paid"})`,
     });
   } else {
     badges.push({

@@ -45,6 +45,16 @@ export async function runFullAuthenticityAudit({
   // 4. Layer 3: Semantic & Chronological Coherence Engine
   const semanticResult = await auditSemanticAuthenticity(extractedText, statutoryResult);
 
+  // If Layer 2 optical scan missed the certificate number but Layer 3 extracted it from document text
+  if (!statutoryResult.certificateNumber && semanticResult.extractedCertificateNumber) {
+    statutoryResult.certificateNumber = semanticResult.extractedCertificateNumber;
+    statutoryResult.verified = true;
+    if (!statutoryResult.statutoryScore || statutoryResult.statutoryScore < 75) {
+      statutoryResult.statutoryScore = 85;
+    }
+    statutoryResult.details = `Official statutory certificate detected (${statutoryResult.registryDomain || "Registry"}, Cert #${statutoryResult.certificateNumber}).`;
+  }
+
   // 5. Composite Score & Badge Generation
   const scoreResult = calculateAuthenticityScore(
     forensicResult,

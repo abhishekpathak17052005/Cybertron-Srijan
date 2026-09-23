@@ -3,7 +3,7 @@ dotenv.config();
 
 import sharp from "sharp";
 import { runErrorLevelAnalysis } from "./src/services/forensicService.js";
-import { extractStatutoryQR } from "./src/services/qrScannerService.js";
+import { extractStatutoryQR, extractCertificateNumberFromText } from "./src/services/qrScannerService.js";
 import { auditSemanticAuthenticity } from "./src/services/statutoryService.js";
 import { calculateAuthenticityScore } from "./src/utils/authenticityScorer.js";
 import { runFullAuthenticityAudit } from "./src/controllers/authenticityController.js";
@@ -75,6 +75,31 @@ async function runTests() {
     `Registry domain identified: ${statutoryResult.registryDomain}`
   );
   assert(statutoryResult.stampAmountPaid === "₹500", `Duty amount identified: ${statutoryResult.stampAmountPaid}`);
+
+  // TEST 2b: Multi-Format Certificate Number Extractor
+  console.log("\n🔹 TEST SUITE 2b: Multi-Format Certificate Extraction Coverage");
+  const certFormats = [
+    { name: "OCR-spaced e-Stamp", text: "e-Stamp Certificate No: IN - DL 1234 5678 9012 34 V", expected: "IN-DL12345678901234V" },
+    { name: "Markdown table pipe", text: "| Certificate Number | 10293847561928 |", expected: "10293847561928" },
+    { name: "Multi-line e-Stamp", text: "Certificate No.\nIN-KA12345678901234T", expected: "IN-KA12345678901234T" },
+    { name: "Multi-line numeric cert", text: "Certificate Number\n982173491823", expected: "982173491823" },
+    { name: "Treasury Challan No", text: "Challan No.: 98217346", expected: "98217346" },
+    { name: "SRO Registration Deed", text: "Registration No. : BDR-1/10293/2026", expected: "BDR-1/10293/2026" },
+    { name: "Direct GRN", text: "GRN: 2026MH10293847", expected: "GRN-2026MH10293847" },
+    { name: "Traditional stamp paper S.No", text: "Stamp Paper S.No: 9812734", expected: "9812734" },
+    { name: "Traditional stamp serial", text: "Serial No: AA 123456", expected: "AA 123456" },
+    { name: "e-SBTR Treasury Receipt", text: "e-SBTR No: MH-SBTR-2026-1029384", expected: "MH-SBTR-2026-1029384" },
+    { name: "Notary Registration", text: "Notary Reg. No: 1234/2026", expected: "1234/2026" },
+    { name: "UDIN Identification", text: "UDIN: 26102938A123BC", expected: "26102938A123BC" },
+    { name: "Same-line trailing date keyword", text: "Certificate No: 10293847561928 Dated 12/02/2026", expected: "10293847561928" },
+    { name: "Compact e-Stamp prefix", text: "INDL98217349182345A", expected: "IN-DL98217349182345A" },
+    { name: "Hash prefix format", text: "Certificate # 982173491823", expected: "982173491823" },
+  ];
+
+  for (const tc of certFormats) {
+    const extracted = extractCertificateNumberFromText(tc.text);
+    assert(extracted === tc.expected, `${tc.name}: extracted "${extracted}" matches expected "${tc.expected}"`);
+  }
 
   // TEST 3: Layer 3 Semantic & Chronology Auditor (Sound Sequence)
   console.log("\n🔹 TEST SUITE 3: Layer 3 Semantic & Chronology Auditor");
